@@ -44,6 +44,7 @@ jobs:
           nuitka-version: main
           script-name: sprite_formatter.py
           mode: app
+          enable-plugins: pyqt6
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
