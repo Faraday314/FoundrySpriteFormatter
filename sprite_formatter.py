@@ -224,7 +224,7 @@ class SpriteFormatter(QWidget):
         shadow_slider_layout.addLayout(labeled_shadow_slider)
         shadow_slider_layout.addLayout(shadow_current)
 
-        resize_checkbox = QCheckBox("Viewport Resizing", self)
+        resize_checkbox = QCheckBox("Viewport Autoscaling", self)
         resize_checkbox.setChecked(True)
         resize_checkbox.stateChanged.connect(self.toggleResizeCheckbox)
 
