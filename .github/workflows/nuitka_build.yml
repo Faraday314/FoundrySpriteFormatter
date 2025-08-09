@@ -19,12 +19,12 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
         include:
-          -plugin: pyqt6
-          -script: sprite_formatter.py
-          -plugin: pyside6
-           os: macos-latest
-          -script: sprite_formatter_macos.py
-           os: macos-latest
+          - plugin: pyqt6
+          - script: sprite_formatter.py
+          - plugin: pyside6
+            os: macos-latest
+          - script: sprite_formatter_macos.py
+            os: macos-latest
 
     runs-on: ${{ matrix.os }}
 
