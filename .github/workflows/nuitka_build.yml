@@ -70,5 +70,6 @@ jobs:
       - name: Add Artifacts to Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run:
+        run: |
+          ls
           gh release upload latest_build *.zip --clobber
