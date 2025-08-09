@@ -64,12 +64,15 @@ jobs:
 
     steps:
       - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+
 
       - uses: actions/checkout@v3
       - name: Add Artifacts to Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ls
-          gh release upload latest_build *.zip --clobber
+          ls -R artifacts
+          gh release upload latest_build artifacts/* --clobber
