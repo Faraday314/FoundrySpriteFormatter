@@ -18,6 +18,8 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        plugin: [pyside6, pyqt6, pyqt6]
+        script: [sprite_formatter_macos.py, sprite_formatter.py, sprite_formatter.py]
 
     runs-on: ${{ matrix.os }}
 
@@ -42,9 +44,9 @@ jobs:
         uses: Nuitka/Nuitka-Action@main
         with:
           nuitka-version: main
-          script-name: sprite_formatter.py
+          script-name: ${{ script }}
           mode: app
-          enable-plugins: pyqt6
+          enable-plugins: ${{ plugin }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
