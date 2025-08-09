@@ -5,10 +5,10 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PyQt6.QtCore import Qt
+from PySide6.QtCore import Qt
 
-from PyQt6.QtGui import QPixmap, QImage, QColorConstants, QIntValidator
-from PyQt6.QtWidgets import (QApplication, QWidget, QPushButton, QComboBox, QFileDialog,
+from PySide6.QtGui import QPixmap, QImage, QColorConstants, QIntValidator
+from PySide6.QtWidgets import (QApplication, QWidget, QPushButton, QComboBox, QFileDialog,
                              QHBoxLayout, QVBoxLayout, QLabel, QFrame, QSlider, QLineEdit, QCheckBox)
 
 
@@ -256,9 +256,9 @@ class SpriteFormatter(QWidget):
         response = QFileDialog.getOpenFileName(
             parent=self,
             caption='Select a file',
-            directory=os.getcwd(),
+            dir=os.getcwd(),
             filter='Image File (*.png *.webp)',
-            initialFilter='Image File (*.png *.webp)'
+            selectedFilter='Image File (*.png *.webp)'
         )
         img_path = response[0]
 
@@ -285,14 +285,17 @@ class SpriteFormatter(QWidget):
             response = QFileDialog.getSaveFileName(
                 parent=self,
                 caption="Select where to export this sprite.",
-                directory=f"{self.filename}_sprite.webp",
+                dir=f"{self.filename}_sprite.webp",
                 filter="Image File (*.webp)",
-                initialFilter="Image File (*.webp)"
+                selectedFilter="Image File (*.webp)"
             )
-            try:
-                cv2.imwrite(response[0], self.output_sprite, [int(cv2.IMWRITE_WEBP_QUALITY), 100])
-            except cv2.error:
-                self.textbox.setText(f"<font color='red'>Could not save sprite at provided path.</font>")
+
+            export_path = response[0]
+            if export_path != "":
+                try:
+                    cv2.imwrite(export_path, self.output_sprite, [int(cv2.IMWRITE_WEBP_QUALITY), 100])
+                except cv2.error:
+                    self.textbox.setText(f"<font color='red'>Could not save sprite at provided path.</font>")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

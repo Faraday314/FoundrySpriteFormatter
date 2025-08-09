@@ -17,14 +17,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-        include:
-          - plugin: pyqt6
-          - script: sprite_formatter.py
-          - plugin: pyside6
-            os: macos-latest
-          - script: sprite_formatter_macos.py
-            os: macos-latest
+        os: [ macos-latest, ubuntu-latest, windows-latest ]
 
     runs-on: ${{ matrix.os }}
 
@@ -49,15 +42,28 @@ jobs:
         uses: Nuitka/Nuitka-Action@main
         with:
           nuitka-version: main
-          script-name: ${{ matrix.script }}
+          script-name: sprite_formatter.pyw
           mode: app
-          enable-plugins: ${{ matrix.plugin }}
+          enable-plugins: pyside6
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }} Build
           path: |
+            build/*.exe
+            build/*.bin
+            build/*.app/**/*
+            build/*.dist/**/*
+          include-hidden-files: true
+
+      - name: Add Artifacts to Release
+        uses: eine/tip@master
+        with:
+          tag: latest_build
+          rm: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
             build/*.exe
             build/*.bin
             build/*.app/**/*
