@@ -54,7 +54,6 @@ jobs:
             build/*.exe
             build/*.bin
             build/*.app/**/*
-            build/*.dist/**/*
           include-hidden-files: true
   release:
     needs: build
@@ -65,6 +64,8 @@ jobs:
     steps:
       - name: Checkout Code and Clean Latest Release.
         uses: actions/checkout@v4
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: gh release delete latest_build --cleanup-tag --yes
       - run: gh release create latest_build --prerelease --title "Latest Builds" --notes "The latest working builds of this application."
 
