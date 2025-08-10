@@ -63,7 +63,10 @@ jobs:
       contents: write
 
     steps:
-      - name: Download all workflow run artifacts
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts from build step.
         uses: actions/download-artifact@v5
       - run: zip -r macos_build.zip "macOS Build"
       - run: zip -r linux_build.zip "Linux Build"
