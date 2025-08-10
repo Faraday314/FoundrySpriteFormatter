@@ -69,8 +69,6 @@ jobs:
           path: artifacts
       - run: ls -R artifacts
 
-
-      - uses: actions/checkout@v3
       - name: Add Artifacts to Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
