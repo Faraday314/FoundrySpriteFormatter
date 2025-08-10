@@ -2,6 +2,7 @@ import sys
 import os
 from math import floor
 from pathlib import Path
+from collections import namedtuple
 
 import cv2
 import numpy as np
@@ -33,25 +34,20 @@ class SpriteFormatter(QWidget):
         self.window_width, self.window_height = 800, 100
         self.setMinimumSize(self.window_width, self.window_height)
         self.setWindowTitle("Foundry Pixel Art Formatter")
+        self.setFixedWidth(800)
+        self.setFixedHeight(340)
 
         # create the label that holds the image
         self.image_size_px = 80
         self.default_viewport_size_px = 4 * self.image_size_px
         self.canvas_size_dropdown = None
-        self.shadow_min_label = None
-        self.shadow_max_label = None
-        self.shadow_current_val = None
-        self.shadow_current_label = None
-        self.shadow_current_validator = None
-        self.shadow_width_slider = None
-        self.pixel_art_shadow_checkbox = None
-        self.resize_checkbox = None
+        self.shadow_slider = None
+        self.pixel_art_shadow = None
         self.textbox = None
 
         self.open_sprite = None
         self.output_sprite = None
         self.filename = None
-        self.shadow_width = None
 
         self.options_bar = self.createOptionsBar()
         self.image_label = self.createImageDisplay()
@@ -69,20 +65,28 @@ class SpriteFormatter(QWidget):
             try:
                 canvas = np.zeros((self.image_size_px, self.image_size_px, 4), dtype=np.uint8)
 
-                if self.pixel_art_shadow_checkbox.isChecked():
+                width_offset = max(0, (self.image_size_px - self.open_sprite.shape[1]) // 2)
+                height_offset = max(0, self.image_size_px - self.open_sprite.shape[0] - px_v_gap)
+
+                content_limit_width = min(self.open_sprite.shape[1], self.image_size_px)
+                content_limit_height = min(self.open_sprite.shape[0], self.image_size_px)
+
+                if self.pixel_art_shadow.isChecked():
 
                     # Draw drop shadow on canvas
                     shadow_x = self.image_size_px // 2
                     shadow_y = max(0, self.image_size_px - floor(1.5 * px_v_gap))
-                    shadow_height = self.shadow_width // 5
-                    cv2.ellipse(img=canvas, center=(shadow_x, shadow_y), axes=(self.shadow_width, shadow_height), color=(0,0,0,127), thickness=-1, angle=0, startAngle=0, endAngle=360)
-
-                    # Draw sprite on canvas
-                    width_offset = max(0, (self.image_size_px - self.open_sprite.shape[1]) // 2)
-                    height_offset = max(0, self.image_size_px - self.open_sprite.shape[0] - px_v_gap)
-
-                    content_limit_width = min(self.open_sprite.shape[1], self.image_size_px)
-                    content_limit_height = min(self.open_sprite.shape[0], self.image_size_px)
+                    shadow_height = self.shadow_slider.getValue() // 5
+                    cv2.ellipse(
+                        img=canvas,
+                        center=(shadow_x, shadow_y),
+                        axes=(self.shadow_slider.getValue(), shadow_height),
+                        color=(0,0,0,127),
+                        thickness=-1,
+                        angle=0,
+                        startAngle=0,
+                        endAngle=360
+                    )
 
                     # This combines the drop shadow and the sprite drawing
                     visible_pixels = self.open_sprite[:content_limit_height, :content_limit_width][:, :, 3] != 0
@@ -95,13 +99,6 @@ class SpriteFormatter(QWidget):
                     scaled_sprite = cv2.resize(src=canvas, dsize=None, fx=4.0, fy=4.0, interpolation=cv2.INTER_NEAREST_EXACT)
                     self.output_sprite = scaled_sprite
                 else:
-                    # Draw sprite on canvas
-                    width_offset = max(0, (self.image_size_px - self.open_sprite.shape[1]) // 2)
-                    height_offset = max(0, self.image_size_px - self.open_sprite.shape[0] - px_v_gap)
-
-                    content_limit_width = min(self.open_sprite.shape[1], self.image_size_px)
-                    content_limit_height = min(self.open_sprite.shape[0], self.image_size_px)
-
                     canvas[
                         height_offset:height_offset + self.open_sprite.shape[0],
                         width_offset:width_offset + self.open_sprite.shape[1]
@@ -115,21 +112,16 @@ class SpriteFormatter(QWidget):
                     # Draw drop shadow on scaled canvas
                     shadow_x = 2 * self.image_size_px
                     shadow_y = max(0, 4 * self.image_size_px - floor(1.5 * 4 * px_v_gap))
-                    shadow_height = self.shadow_width // 5
-                    cv2.ellipse(img=shadow_canvas, center=(shadow_x, shadow_y), axes=(self.shadow_width, shadow_height),
+                    shadow_height = self.shadow_slider.getValue() // 5
+                    cv2.ellipse(img=shadow_canvas, center=(shadow_x, shadow_y), axes=(self.shadow_slider.getValue(), shadow_height),
                                 color=(0, 0, 0, 127), thickness=-1, angle=0, startAngle=0, endAngle=360)
 
                     shadow_canvas[scaled_sprite[:, :, 3] != 0] = scaled_sprite[scaled_sprite[:, :, 3] != 0]
 
-                    scaled_sprite = shadow_canvas
                     self.output_sprite = shadow_canvas
 
                 # Scale to canvas size for viewing
-                if self.resize_checkbox.isChecked():
-                    scaled_canvas = cv2.resize(src=self.output_sprite, dsize=(self.default_viewport_size_px, self.default_viewport_size_px), interpolation=cv2.INTER_NEAREST_EXACT)
-                else:
-                    scaled_canvas = scaled_sprite
-
+                scaled_canvas = cv2.resize(src=self.output_sprite, dsize=(self.default_viewport_size_px, self.default_viewport_size_px), interpolation=cv2.INTER_NEAREST_EXACT)
                 canvas_pixmap = convert_cv_qt(scaled_canvas)
                 self.image_label.setPixmap(canvas_pixmap)
             except cv2.error:
@@ -146,14 +138,7 @@ class SpriteFormatter(QWidget):
 
     def updateCanvasSize(self):
         self.image_size_px = self.canvas_size_dropdown.currentData()
-        self.shadow_width_slider.setMaximum(self.image_size_px)
-        self.shadow_current_validator.setTop(self.image_size_px)
-        self.shadow_max_label.setText(str(self.image_size_px))
-        if self.shadow_width_slider.value() > self.image_size_px:
-            self.shadow_width_slider.setValue(self.image_size_px)
-            self.shadow_current_val.setText(str(self.image_size_px))
-        if not self.resize_checkbox.isChecked():
-            self.image_label.setFixedSize(4 * self.image_size_px, 4 * self.image_size_px)
+        self.shadow_slider.setRange(0, self.image_size_px if self.pixel_art_shadow.isChecked() else 4 * self.image_size_px)
         self.updateImage()
 
     def createCanvasSizeSelect(self):
@@ -178,36 +163,103 @@ class SpriteFormatter(QWidget):
 
         return canvas_size_select, canvas_size_dropdown
 
-    def changeShadowWidth(self):
-        self.shadow_width = self.shadow_width_slider.value()
-        self.shadow_current_val.setText(str(self.shadow_width))
+    def toggleShadowPixelArtCheckbox(self):
+        if self.pixel_art_shadow.isChecked():
+            self.shadow_slider.setValue(self.shadow_slider.getValue() // 4)
+            self.shadow_slider.setRange(0, self.image_size_px)
+        else:
+            self.shadow_slider.setRange(0, 4 * self.image_size_px)
+            self.shadow_slider.setValue(4 * self.shadow_slider.getValue())
         self.updateImage()
 
-    def changeShadowWidthTextEntry(self):
-        if self.shadow_current_val.text() != "":
-            self.shadow_width = int(self.shadow_current_val.text())
-            self.shadow_width_slider.setValue(self.shadow_width)
+    def createIntSlider(self, initial_value, slider_min, slider_max, slider_label):
+        label = QLabel(self)
+        label.setText(slider_label)
+
+        validator = QIntValidator(self)
+        text_entry = QLineEdit(self)
+        text_entry.setValidator(validator)
+        text_entry.setMaximumWidth(60)
+        text_entry.setMaxLength(4)
+        text_entry.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        slider_entry = QSlider(Qt.Orientation.Horizontal, self)
+        slider_entry.setTickInterval(1)
+        slider_entry.setRange(slider_min, slider_max)
+        slider_entry.setValue(initial_value)
+
+        def truncateEntry():
+            text_val = int(text_entry.text())
+            if text_val < slider_entry.minimum():
+                text_entry.setText(str(slider_entry.minimum()))
+                slider_entry.setValue(slider_entry.minimum())
+            elif text_val > slider_entry.maximum():
+                text_entry.setText(str(slider_entry.maximum()))
+                slider_entry.setValue(slider_entry.maximum())
+
+        text_entry.editingFinished.connect(truncateEntry)
+
+        def match_bar_to_text():
+            if text_entry.text() != "" and text_entry.text() != "-":
+                text_value = int(text_entry.text())
+                if text_value < slider_entry.minimum():
+                    slider_entry.setValue(slider_entry.minimum())
+                elif text_value > slider_entry.maximum():
+                    slider_entry.setValue(slider_entry.maximum())
+                else:
+                    slider_entry.setValue(text_value)
+                self.updateImage()
+
+        def match_text_to_bar():
+            text_entry.setText(str(slider_entry.value()))
             self.updateImage()
 
-    def toggleResizeCheckbox(self):
-        if self.resize_checkbox.isChecked():
-            self.image_label.setFixedSize(self.default_viewport_size_px, self.default_viewport_size_px)
-        else:
-            self.image_label.setFixedSize(4 * self.image_size_px, 4 * self.image_size_px)
-        self.updateImage()
+        text_entry.textEdited.connect(match_bar_to_text)
+        slider_entry.sliderMoved.connect(match_text_to_bar)
+        slider_entry.sliderReleased.connect(match_text_to_bar)
 
-    def toggleShadowPixelArtCheckbox(self):
-        if not self.pixel_art_shadow_checkbox.isChecked():
-            self.shadow_width_slider.setMaximum(4 * self.image_size_px)
-            self.shadow_current_validator.setTop(4 * self.image_size_px)
-            self.shadow_max_label.setText(str(4 * self.image_size_px))
-            self.shadow_width_slider.setValue(4 * self.shadow_width)
-        else:
-            self.shadow_width_slider.setMaximum(self.image_size_px)
-            self.shadow_current_validator.setTop(self.image_size_px)
-            self.shadow_max_label.setText(str(self.image_size_px))
-            self.shadow_width_slider.setValue(self.shadow_width // 4)
-        self.updateImage()
+        min_label = QLabel(self)
+        min_label.setText(str(slider_min))
+
+        max_label = QLabel(self)
+        max_label.setText(str(slider_max))
+
+        slider_layout = QHBoxLayout()
+        slider_layout.addWidget(label)
+        slider_layout.addWidget(text_entry)
+        slider_layout.addWidget(min_label)
+        slider_layout.addWidget(slider_entry)
+        slider_layout.addWidget(max_label)
+
+        def getValue():
+            return slider_entry.value()
+
+        def setValue(val: int):
+            clipped_val = max(slider_entry.minimum(), min(slider_entry.maximum(), val))
+            slider_entry.setValue(clipped_val)
+            text_entry.setText(str(clipped_val))
+
+        def setRange(min_val: int, max_val: int):
+            slider_entry.setRange(min_val, max_val)
+            min_label.setText(str(min_val))
+            max_label.setText(str(max_val))
+            setValue(slider_entry.value())
+
+        def setVisible(visible: bool):
+            label.setVisible(visible)
+            text_entry.setVisible(visible)
+            min_label.setVisible(visible)
+            slider_entry.setVisible(visible)
+            max_label.setVisible(visible)
+
+        slider = namedtuple('Slider', ["layout", "getValue", "setValue", "setRange", "setVisible"])
+        slider.layout = slider_layout
+        slider.getValue = getValue
+        slider.setValue = setValue
+        slider.setRange = setRange
+        slider.setVisible = setVisible
+
+        return slider
 
     def createOptionsBar(self):
         open_sprite_btn = QPushButton("Open Sprite")
@@ -216,72 +268,34 @@ class SpriteFormatter(QWidget):
         export_sprite_btn = QPushButton("Export Sprite")
         export_sprite_btn.clicked.connect(self.saveSpriteFile)
 
+        file_layout = QHBoxLayout()
+        file_layout.addWidget(open_sprite_btn)
+        file_layout.addWidget(export_sprite_btn)
+
         canvas_size_select, canvas_size_dropdown = self.createCanvasSizeSelect()
 
-        shadow_width_slider = QSlider(Qt.Orientation.Horizontal, self)
-        shadow_width_slider.setTickInterval(1)
-        shadow_width_slider.setRange(0, self.image_size_px)
-        shadow_width_slider.valueChanged.connect(self.changeShadowWidth)
-
-        shadow_min_label = QLabel(shadow_width_slider)
-        shadow_min_label.setText("0")
-
-        shadow_max_label = QLabel(shadow_width_slider)
-        shadow_max_label.setText(str(self.image_size_px))
-
-        shadow_current_validator = QIntValidator(0, self.image_size_px, self)
-        shadow_current_val = QLineEdit(self)
-        shadow_current_val.setValidator(shadow_current_validator)
-        shadow_current_val.setMaximumWidth(60)
-        shadow_current_val.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        shadow_current_val.textChanged.connect(self.changeShadowWidthTextEntry)
-
-        shadow_current_label = QLabel(shadow_width_slider)
-        shadow_current_label.setText("Shadow Size (px):")
-
-        shadow_current = QHBoxLayout()
-        shadow_current.addWidget(shadow_current_label)
-        shadow_current.addWidget(shadow_current_val)
-
-        labeled_shadow_slider = QHBoxLayout()
-        labeled_shadow_slider.addWidget(shadow_min_label)
-        labeled_shadow_slider.addWidget(shadow_width_slider)
-        labeled_shadow_slider.addWidget(shadow_max_label)
-
-        shadow_slider_layout = QHBoxLayout()
-        shadow_slider_layout.addLayout(shadow_current)
-        shadow_slider_layout.addLayout(labeled_shadow_slider)
+        shadow_slider = self.createIntSlider(0, 0, self.image_size_px, "Shadow Size (px):")
+        shadow_height_slider = self.createIntSlider(0, 0, self.image_size_px, "Shadow Height (px)")
 
         pixel_art_shadow_checkbox = QCheckBox("Pixel Art Style Shadow")
         pixel_art_shadow_checkbox.setChecked(True)
         pixel_art_shadow_checkbox.stateChanged.connect(self.toggleShadowPixelArtCheckbox)
 
-        resize_checkbox = QCheckBox("Viewport Autoscaling", self)
-        resize_checkbox.setChecked(True)
-        resize_checkbox.stateChanged.connect(self.toggleResizeCheckbox)
-
         textbox = QLabel()
 
         # Create a vertical box layout on the left for changing options.
         options_bar = QVBoxLayout()
-        options_bar.addWidget(open_sprite_btn)
-        options_bar.addWidget(export_sprite_btn)
+        options_bar.addLayout(file_layout)
         options_bar.addLayout(canvas_size_select)
-        options_bar.addLayout(shadow_slider_layout)
+        options_bar.addLayout(shadow_slider.layout)
+        options_bar.addLayout(shadow_height_slider.layout)
         options_bar.addWidget(pixel_art_shadow_checkbox)
-        options_bar.addWidget(resize_checkbox)
         options_bar.addStretch()
         options_bar.addWidget(textbox)
 
         self.canvas_size_dropdown = canvas_size_dropdown
-        self.shadow_min_label = shadow_min_label
-        self.shadow_max_label = shadow_max_label
-        self.shadow_current_val = shadow_current_val
-        self.shadow_current_label = shadow_current_label
-        self.shadow_current_validator = shadow_current_validator
-        self.shadow_width_slider = shadow_width_slider
-        self.pixel_art_shadow_checkbox = pixel_art_shadow_checkbox
-        self.resize_checkbox = resize_checkbox
+        self.shadow_slider = shadow_slider
+        self.pixel_art_shadow = pixel_art_shadow_checkbox
         self.textbox = textbox
 
         self.setSpriteOptionVisibility(False)
@@ -289,12 +303,8 @@ class SpriteFormatter(QWidget):
         return options_bar
 
     def setSpriteOptionVisibility(self, visible):
-        self.shadow_min_label.setVisible(visible)
-        self.shadow_max_label.setVisible(visible)
-        self.shadow_current_val.setVisible(visible)
-        self.shadow_width_slider.setVisible(visible)
-        self.pixel_art_shadow_checkbox.setVisible(visible)
-        self.shadow_current_label.setVisible(visible)
+        self.shadow_slider.setVisible(visible)
+        self.pixel_art_shadow.setVisible(visible)
 
     def createImageDisplay(self):
         image_label = QLabel(self)
@@ -319,9 +329,7 @@ class SpriteFormatter(QWidget):
             try:
                 self.textbox.setText(f"Currently Open: {os.path.basename(img_path)}")
                 self.open_sprite = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
-                self.shadow_width = floor(self.open_sprite.shape[1] * 0.75)
-                self.shadow_width_slider.setValue(self.shadow_width)
-                self.shadow_current_val.setText(str(self.shadow_width))
+                self.shadow_slider.setValue(floor(self.open_sprite.shape[1] * 0.75))
                 self.setSpriteOptionVisibility(True)
             except cv2.error:
                 self.textbox.setText(f"<font color='red'>Could not open sprite at {img_path}.</font>")
