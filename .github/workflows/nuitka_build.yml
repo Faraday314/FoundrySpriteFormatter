@@ -63,10 +63,12 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Code and Clean Latest Release.
         uses: actions/checkout@v4
+      - run: gh release delete latest_build --cleanup-tag --yes
+      - run: gh release create latest_build --prerelease --title "Latest Builds" --notes "The latest working builds of this application."
 
-      - name: Download artifacts from build step.
+      - name: Download Artifacts from Build Step.
         uses: actions/download-artifact@v5
       - run: zip -r macos_build.zip "macOS Build"
       - run: zip -r linux_build.zip "Linux Build"
