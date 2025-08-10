@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         #os: [ macos-latest, ubuntu-latest, windows-latest ]
-        os: [ macos-latest ]
+        os: [ macos-latest, ubuntu-latest ]
 
     runs-on: ${{ matrix.os }}
 
@@ -71,7 +71,7 @@ jobs:
         uses: actions/download-artifact@v5
       - run: zip -r macos_build.zip "macOS Build"
       - run: zip -r linux_build.zip "Linux Build"
-      - run: zip -r windows_build.zip "Windows Build"
+      #- run: zip -r windows_build.zip "Windows Build"
 
       - name: Add Artifacts to Release
         uses: softprops/action-gh-release@v2
