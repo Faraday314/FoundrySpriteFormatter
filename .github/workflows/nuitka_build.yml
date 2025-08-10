@@ -68,6 +68,7 @@ jobs:
       - name: Checkout Code and Clean Latest Release.
         uses: actions/checkout@v4
       - run: gh release delete latest_build --cleanup-tag --yes
+        continue-on-error: true
       - run: gh release create latest_build --prerelease --title "Latest Builds" --notes "The latest working builds of this application."
 
       - name: Download Artifacts from Build Step.
