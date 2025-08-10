@@ -232,10 +232,12 @@ class SpriteFormatter(QWidget):
         shadow_current_validator = QIntValidator(0, self.image_size_px, self)
         shadow_current_val = QLineEdit(self)
         shadow_current_val.setValidator(shadow_current_validator)
+        shadow_current_val.setMaximumWidth(60)
+        shadow_current_val.setAlignment(Qt.AlignmentFlag.AlignLeft)
         shadow_current_val.textChanged.connect(self.changeShadowWidthTextEntry)
 
         shadow_current_label = QLabel(shadow_width_slider)
-        shadow_current_label.setText("Shadow Size (px): ")
+        shadow_current_label.setText("Shadow Size (px):")
 
         shadow_current = QHBoxLayout()
         shadow_current.addWidget(shadow_current_label)
@@ -246,11 +248,11 @@ class SpriteFormatter(QWidget):
         labeled_shadow_slider.addWidget(shadow_width_slider)
         labeled_shadow_slider.addWidget(shadow_max_label)
 
-        shadow_slider_layout = QVBoxLayout()
-        shadow_slider_layout.addLayout(labeled_shadow_slider)
+        shadow_slider_layout = QHBoxLayout()
         shadow_slider_layout.addLayout(shadow_current)
+        shadow_slider_layout.addLayout(labeled_shadow_slider)
 
-        pixel_art_shadow_checkbox = QCheckBox("Pixel Art Shadow")
+        pixel_art_shadow_checkbox = QCheckBox("Pixel Art Style Shadow")
         pixel_art_shadow_checkbox.setChecked(True)
         pixel_art_shadow_checkbox.stateChanged.connect(self.toggleShadowPixelArtCheckbox)
 

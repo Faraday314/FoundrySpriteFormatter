@@ -65,8 +65,7 @@ jobs:
     steps:
       - name: Download all workflow run artifacts
         uses: actions/download-artifact@v5
-      - run: ls
-      - run: zip -r macos_build.zip "MacOS Build"
+      - run: zip -r macos_build.zip "macOS Build"
       - run: zip -r linux_build.zip "Linux Build"
       - run: zip -r windows_build.zip "Windows Build"
 
