@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QApplication, QWidget, QPushButton, QComboBox, QF
 
 SPRITE_VERT_GAP = 7
 BACKGROUND_GRAY_COLOR = 224
-SHADOW_COLOR = (0,0,0,127)
+SHADOW_COLOR = (40,40,40,127)
 
 CANVAS_SIZES = {
     "Tiny Legacy (35x35)": 35,
@@ -37,7 +37,7 @@ def convert_cv_qt(cv_img: np.ndarray) -> QPixmap:
     return QPixmap.fromImage(q_img)
 
 
-def isValidPiskelSize(width: int, height: int) -> bool:
+def is_valid_piskel_size(width: int, height: int) -> bool:
     base_width = width // 4
     base_height = height // 4
     return (
@@ -88,14 +88,14 @@ class SpriteFormatter(QWidget):
 
         self.prev_info_text = ""
         self.error_displayed = False
-        self.background = self.createBackgroundGrid()
+        self.background = self.create_background_grid()
         self.background_pixmap = convert_cv_qt(self.background)
         self.open_sprite = None
         self.output_sprite = None
         self.filename = None
 
-        self.options_bar = self.createOptionsBar()
-        self.image_label = self.createImageDisplay()
+        self.options_bar = self.create_options_bar()
+        self.image_label = self.create_image_display()
 
         # create the overall hbox layout separating the image and settings.
         hbox = QHBoxLayout()
@@ -105,14 +105,14 @@ class SpriteFormatter(QWidget):
         # set the hbox layout as the widgets layout
         self.setLayout(hbox)
 
-    def createBackgroundGrid(self) -> np.ndarray:
+    def create_background_grid(self) -> np.ndarray:
         background = np.full((self.image_size_px, self.image_size_px, 4), 255, dtype=np.uint8)
         background[::2, ::2, :3] = BACKGROUND_GRAY_COLOR
         background[1::2, 1::2, :3] = BACKGROUND_GRAY_COLOR
         scaled_bg = cv2.resize(src=background, dsize=(self.default_viewport_size_px, self.default_viewport_size_px), interpolation=cv2.INTER_NEAREST_EXACT)
         return scaled_bg
 
-    def updateImage(self):
+    def update_image(self):
         if self.open_sprite is not None:
             try:
 
@@ -145,7 +145,8 @@ class SpriteFormatter(QWidget):
                         thickness=-1,
                         angle=0,
                         startAngle=0,
-                        endAngle=360
+                        endAngle=360,
+                        lineType=cv2.LINE_AA if not self.pixel_art_shadow.isChecked() else cv2.LINE_8
                     )
 
                 if (
@@ -232,13 +233,13 @@ class SpriteFormatter(QWidget):
                 self.textbox.setText("<font color='red'>An error occurred while drawing the image.</font>")
                 self.error_displayed = True
                 self.image_label.setPixmap(self.background_pixmap)
-                self.setSpriteOptionsVisibility(False)
+                self.set_sprite_options_visibility(False)
                 self.open_sprite = None
                 self.output_sprite = None
         else:
             self.image_label.setPixmap(self.background_pixmap)
 
-    def updateSizeDependentWidgets(self):
+    def update_size_dependent_widgets(self):
         if self.pixel_art_shadow.isChecked():
             self.shadow_slider.setRange(0, self.image_size_px)
             self.shadow_y_slider.setRange(0, self.image_size_px)
@@ -246,38 +247,38 @@ class SpriteFormatter(QWidget):
             self.shadow_slider.setRange(0, 4 * self.image_size_px)
             self.shadow_y_slider.setRange(0, 4 * self.image_size_px)
 
-        self.background = self.createBackgroundGrid()
+        self.background = self.create_background_grid()
         self.background_pixmap = convert_cv_qt(self.background)
 
-    def updateCanvasSize(self):
+    def update_canvas_size(self):
         self.image_size_px = self.canvas_size_dropdown.getValue()
-        self.updateSizeDependentWidgets()
-        self.updateImage()
+        self.update_size_dependent_widgets()
+        self.update_image()
 
-    def spriteModeChange(self):
+    def sprite_mode_change(self):
         # OMM mode
         if self.sprite_type_dropdown.getValue():
             self.textbox.setText(self.prev_info_text)
             self.error_displayed = False
             self.canvas_size_dropdown.setVisible(True)
-            self.setSpriteOptionsVisibility(True)
-            self.updateCanvasSize()
+            self.set_sprite_options_visibility(True)
+            self.update_canvas_size()
         # Piskel mode
         else:
             self.canvas_size_dropdown.setVisible(False)
             if self.open_sprite is not None:
-                if not isValidPiskelSize(self.open_sprite.shape[0], self.open_sprite.shape[1]):
+                if not is_valid_piskel_size(self.open_sprite.shape[0], self.open_sprite.shape[1]):
                     if not self.error_displayed:
                         self.prev_info_text = self.textbox.text()
                     self.textbox.setText("<font color='red'>Incorrectly sized sprite for piskel mode.</font>")
                     self.error_displayed = True
-                    self.setSpriteOptionsVisibility(False)
+                    self.set_sprite_options_visibility(False)
                 else:
                     self.image_size_px = self.open_sprite.shape[0] // 4
-                    self.updateSizeDependentWidgets()
-                    self.updateImage()
+                    self.update_size_dependent_widgets()
+                    self.update_image()
 
-    def createDropdown(self, label: str, options: dict[str, int], default_option_idx: int, on_change: Callable, row: int, layout: QGridLayout):
+    def create_dropdown(self, label: str, options: dict[str, int], default_option_idx: int, on_change: Callable, row: int, layout: QGridLayout):
         dropdown_label = QLabel(label)
 
         dropdown_entry = QComboBox(self)
@@ -291,17 +292,17 @@ class SpriteFormatter(QWidget):
         layout.addWidget(dropdown_label, row, 0)
         layout.addWidget(dropdown_entry, row, 1)
 
-        def setVisible(visible: bool):
+        def set_visible(visible: bool):
             dropdown_label.setVisible(visible)
             dropdown_entry.setVisible(visible)
 
-        dropdown = namedtuple('Dropdown', ["getValue", "setVisible"])
+        dropdown = namedtuple('Dropdown', ["getValue", "set_visible"])
         dropdown.getValue = dropdown_entry.currentData
-        dropdown.setVisible = setVisible
+        dropdown.setVisible = set_visible
 
         return dropdown
 
-    def toggleShadowPixelArtCheckbox(self):
+    def toggle_shadow_pixel_art_checkbox(self):
         if self.pixel_art_shadow.isChecked():
             self.shadow_slider.setValue(self.shadow_slider.getValue() // 4)
             self.shadow_slider.setRange(0, self.image_size_px)
@@ -312,13 +313,13 @@ class SpriteFormatter(QWidget):
             self.shadow_slider.setValue(4 * self.shadow_slider.getValue())
             self.shadow_y_slider.setRange(0, 4 * self.image_size_px)
             self.shadow_y_slider.setValue(4 * self.shadow_y_slider.getValue())
-        self.updateImage()
+        self.update_image()
 
-    def toggleShadowVisibilityCheckbox(self):
-        self.setShadowOptionsVisibility(self.enable_shadow_checkbox.isChecked())
-        self.updateImage()
+    def toggle_shadow_visibility_checkbox(self):
+        self.set_shadow_options_visibility(self.enable_shadow_checkbox.isChecked())
+        self.update_image()
 
-    def createIntSlider(self, slider_label: str, initial_value: int, slider_min: int, slider_max: int, layout: QGridLayout, row: int):
+    def create_int_slider(self, slider_label: str, initial_value: int, slider_min: int, slider_max: int, layout: QGridLayout, row: int):
         label = QLabel(self)
         label.setText(slider_label)
 
@@ -333,7 +334,7 @@ class SpriteFormatter(QWidget):
         slider_entry.setRange(slider_min, slider_max)
         slider_entry.setValue(initial_value)
 
-        def truncateEntry():
+        def truncate_entry():
             text_val = int(manual_entry.text())
             if text_val < slider_entry.minimum():
                 manual_entry.setValue(slider_entry.minimum())
@@ -342,7 +343,7 @@ class SpriteFormatter(QWidget):
                 manual_entry.setValue(slider_entry.maximum())
                 slider_entry.setValue(slider_entry.maximum())
 
-        manual_entry.editingFinished.connect(truncateEntry)
+        manual_entry.editingFinished.connect(truncate_entry)
 
         def match_bar_to_text():
             if manual_entry.text() != "" and manual_entry.text() != "-":
@@ -353,11 +354,11 @@ class SpriteFormatter(QWidget):
                     slider_entry.setValue(slider_entry.maximum())
                 else:
                     slider_entry.setValue(text_value)
-                self.updateImage()
+                self.update_image()
 
         def match_text_to_bar():
             manual_entry.setValue(slider_entry.value())
-            self.updateImage()
+            self.update_image()
 
         manual_entry.textChanged.connect(match_bar_to_text)
         slider_entry.sliderMoved.connect(match_text_to_bar)
@@ -375,65 +376,65 @@ class SpriteFormatter(QWidget):
         layout.addWidget(slider_entry, row, 3)
         layout.addWidget(max_label, row, 4)
 
-        def getValue() -> int:
+        def get_value() -> int:
             return slider_entry.value()
 
-        def setValue(val: int):
+        def set_value(val: int):
             clipped_val = max(slider_entry.minimum(), min(slider_entry.maximum(), val))
             slider_entry.setValue(clipped_val)
             manual_entry.setValue(clipped_val)
 
-        def setRange(min_val: int, max_val: int):
+        def set_range(min_val: int, max_val: int):
             slider_entry.setRange(min_val, max_val)
             min_label.setText(str(min_val))
             max_label.setText(str(max_val))
-            setValue(slider_entry.value())
+            set_value(slider_entry.value())
 
-        def setVisible(visible: bool):
+        def set_visible(visible: bool):
             label.setVisible(visible)
             manual_entry.setVisible(visible)
             min_label.setVisible(visible)
             slider_entry.setVisible(visible)
             max_label.setVisible(visible)
 
-        slider = namedtuple('Slider', ["getValue", "setValue", "setRange", "setVisible"])
-        slider.getValue = getValue
-        slider.setValue = setValue
-        slider.setRange = setRange
-        slider.setVisible = setVisible
+        slider = namedtuple('Slider', ["get_value", "set_value", "set_range", "set_visible"])
+        slider.getValue = get_value
+        slider.setValue = set_value
+        slider.setRange = set_range
+        slider.setVisible = set_visible
 
         return slider
 
-    def createOptionsBar(self) -> QLayout:
+    def create_options_bar(self) -> QLayout:
         open_sprite_btn = QPushButton("Open Sprite")
-        open_sprite_btn.clicked.connect(self.openSpriteFile)
+        open_sprite_btn.clicked.connect(self.open_sprite_file)
 
         export_sprite_btn = QPushButton("Export Sprite")
-        export_sprite_btn.clicked.connect(self.saveSpriteFile)
+        export_sprite_btn.clicked.connect(self.save_sprite_file)
 
         file_layout = QHBoxLayout()
         file_layout.addWidget(open_sprite_btn)
         file_layout.addWidget(export_sprite_btn)
 
         dropdown_layout = QGridLayout()
-        sprite_type_dropdown = self.createDropdown("Sprite Type:", {
+        sprite_type_dropdown = self.create_dropdown("Sprite Type:", {
             "OMM Sprite": True,
             "Piskel Sprite": False
-        }, 0, self.spriteModeChange, 0, dropdown_layout)
-        canvas_size_dropdown = self.createDropdown("Canvas Size:", CANVAS_SIZES, 4, self.updateCanvasSize, 1, dropdown_layout)
+        }, 0, self.sprite_mode_change, 0, dropdown_layout)
+        canvas_size_dropdown = self.create_dropdown("Canvas Size:", CANVAS_SIZES, 4, self.update_canvas_size, 1, dropdown_layout)
         dropdown_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         slider_options = QGridLayout()
-        shadow_slider = self.createIntSlider("Shadow Size (px):", 0, 0, self.image_size_px, slider_options,0)
-        shadow_y_slider = self.createIntSlider("Shadow Height (px):", 0, 0, self.image_size_px, slider_options, 1)
+        shadow_slider = self.create_int_slider("Shadow Size (px):", 0, 0, self.image_size_px, slider_options, 0)
+        shadow_y_slider = self.create_int_slider("Shadow Height (px):", 0, 0, self.image_size_px, slider_options, 1)
 
         pixel_art_shadow_checkbox = QCheckBox("Pixelate Shadow")
         pixel_art_shadow_checkbox.setChecked(True)
-        pixel_art_shadow_checkbox.stateChanged.connect(self.toggleShadowPixelArtCheckbox)
+        pixel_art_shadow_checkbox.stateChanged.connect(self.toggle_shadow_pixel_art_checkbox)
 
         enable_shadow_checkbox = QCheckBox("Enable Shadow")
         enable_shadow_checkbox.setChecked(True)
-        enable_shadow_checkbox.stateChanged.connect(self.toggleShadowVisibilityCheckbox)
+        enable_shadow_checkbox.stateChanged.connect(self.toggle_shadow_visibility_checkbox)
 
         checkbox_options = QHBoxLayout()
         checkbox_options.addWidget(enable_shadow_checkbox)
@@ -459,21 +460,21 @@ class SpriteFormatter(QWidget):
         self.enable_shadow_checkbox = enable_shadow_checkbox
         self.textbox = textbox
 
-        self.setSpriteOptionsVisibility(False)
+        self.set_sprite_options_visibility(False)
 
         return options_bar
 
-    def setShadowOptionsVisibility(self, visible: bool):
+    def set_shadow_options_visibility(self, visible: bool):
         self.shadow_slider.setVisible(visible)
         self.shadow_y_slider.setVisible(visible)
         self.pixel_art_shadow.setVisible(visible)
 
-    def setSpriteOptionsVisibility(self, visible: bool):
+    def set_sprite_options_visibility(self, visible: bool):
         if self.enable_shadow_checkbox.isChecked():
-            self.setShadowOptionsVisibility(visible)
+            self.set_shadow_options_visibility(visible)
         self.enable_shadow_checkbox.setVisible(visible)
 
-    def createImageDisplay(self):
+    def create_image_display(self):
         image_label = QLabel(self)
 
         image_label.setFrameStyle(QFrame.Shape.Box)
@@ -484,7 +485,7 @@ class SpriteFormatter(QWidget):
 
         return image_label
 
-    def openSpriteFile(self):
+    def open_sprite_file(self):
         response = QFileDialog.getOpenFileName(
             parent=self,
             caption='Select a file',
@@ -507,7 +508,7 @@ class SpriteFormatter(QWidget):
 
             if (
                 self.sprite_type_dropdown.getValue()
-                or (isValidPiskelSize(sprite.shape[0], sprite.shape[1]) and not self.sprite_type_dropdown.getValue())
+                or (is_valid_piskel_size(sprite.shape[0], sprite.shape[1]) and not self.sprite_type_dropdown.getValue())
             ):
                 self.image_size_px = self.canvas_size_dropdown.getValue() if self.sprite_type_dropdown.getValue() else sprite.shape[0] // 4
 
@@ -524,14 +525,15 @@ class SpriteFormatter(QWidget):
                 self.open_sprite = sprite
                 self.shadow_slider.setValue(floor(est_shadow_width * 0.75))
                 self.shadow_y_slider.setValue(floor(1.5 * SPRITE_VERT_GAP))
-                self.setSpriteOptionsVisibility(True)
-                self.updateImage()
+                self.set_sprite_options_visibility(True)
+                self.update_image()
             else:
                 if not self.error_displayed:
                     self.prev_info_text = self.textbox.text()
                 self.textbox.setText("<font color='red'>Incorrectly sized sprite for piskel mode.</font>")
                 self.error_displayed = True
-    def saveSpriteFile(self):
+
+    def save_sprite_file(self):
         if self.output_sprite is not None:
             response = QFileDialog.getSaveFileName(
                 parent=self,
