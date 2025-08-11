@@ -75,7 +75,6 @@ jobs:
       - name: Download Artifacts from Build Step.
         uses: actions/download-artifact@v5
       - run: tar -C "macOS Build" -pcvf macos_build.tar .
-      - run: ls -l "Linux Build/*"
       - run: tar -C "Linux Build" -pcvf linux_build.tar .
       #- run: cd "Windows Build" && zip -r windows_build.zip . && cd .. && mv "Windows Build/windows_build.zip" windows_build.zip
 
