@@ -74,26 +74,15 @@ jobs:
 
       - name: Download Artifacts from Build Step.
         uses: actions/download-artifact@v5
-      - run: |
-            cd "macOS Build"
-            zip -r macos_build.zip .
-            cd ..
-            mv "macOS Build/macos_build.zip" macos_build.zip
-      - run: |
-            cd "Linux Build"
-            zip -r linux_build.zip .
-            cd ..
-            mv "Linux Build/linux_build.zip" linux_build.zip
-      - run: |
-            cd "Windows Build"
-            zip -r windows_build.zip .
-            cd ..
-            mv "Windows Build/windows_build.zip" windows_build.zip
+      - run: tar -C "macOS Build" -cvf macos_build.tar .
+      - run: tar -C "Linux Build" -cvf linux_build.tar .
+      - run: cd "Windows Build" && zip -r windows_build.zip . && cd .. && mv "Windows Build/windows_build.zip" windows_build.zip
 
       - name: Add Artifacts to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest_build
+          overwrite_files: true
           files: |
             macos_build.zip
             linux_build.zip
