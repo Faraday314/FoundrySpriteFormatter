@@ -261,7 +261,8 @@ class SpriteFormatter(QWidget):
             self.textbox.setText(self.prev_info_text)
             self.error_displayed = False
             self.canvas_size_dropdown.setVisible(True)
-            self.set_sprite_options_visibility(True)
+            if self.open_sprite is not None:
+                self.set_sprite_options_visibility(True)
             self.update_canvas_size()
         # Piskel mode
         else:
