@@ -84,6 +84,6 @@ jobs:
           tag_name: latest_build
           overwrite_files: true
           files: |
-            macos_build.zip
-            linux_build.zip
+            macos_build.tar
+            linux_build.tar
             windows_build.zip
