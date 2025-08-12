@@ -84,6 +84,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest_build
+          prerelease: true
           files: |
             macos_build.zip
             linux_build.zip
