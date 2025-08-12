@@ -76,10 +76,8 @@ jobs:
         uses: actions/download-artifact@v5
       - run: chmod +x "macOS Build/sprite_formatter.app/Contents/MacOS/sprite_formatter"
       - run: cd "macOS Build" && zip -r macos_build.zip . && cd .. && mv "macOS Build/macos_build.zip" macos_build.zip
-      #- run: tar -C "macOS Build" -pcvf macos_build.tar .
       - run: chmod +x "Linux Build/sprite_formatter.bin"
       - run: cd "Linux Build" && zip -r linux_build.zip . && cd .. && mv "Linux Build/linux_build.zip" linux_build.zip
-      #- run: tar -C "Linux Build" -pcvf linux_build.tar .
       - run: cd "Windows Build" && zip -r windows_build.zip . && cd .. && mv "Windows Build/windows_build.zip" windows_build.zip
 
       - name: Add Artifacts to Release

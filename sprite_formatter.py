@@ -256,6 +256,9 @@ class SpriteFormatter(QWidget):
         self.update_image()
 
     def sprite_mode_change(self):
+        if self.open_sprite is not None:
+            self.shadow_slider.setValue(floor(self.estimate_shadow_width(self.open_sprite) * 0.75))
+
         # OMM mode
         if self.sprite_type_dropdown.getValue():
             self.textbox.setText(self.prev_info_text)
@@ -486,6 +489,16 @@ class SpriteFormatter(QWidget):
 
         return image_label
 
+    def estimate_shadow_width(self, sprite: np.ndarray) -> int:
+        _, y = np.where(sprite[:, :, 3] != 0)
+        min_col = int(np.min(y))
+        max_col = int(np.max(y))
+
+        est_shadow_width = max_col - min_col
+        est_shadow_width //= 4 if not self.sprite_type_dropdown.getValue() else 1
+
+        return est_shadow_width
+
     def open_sprite_file(self):
         response = QFileDialog.getOpenFileName(
             parent=self,
@@ -513,18 +526,12 @@ class SpriteFormatter(QWidget):
             ):
                 self.image_size_px = self.canvas_size_dropdown.getValue() if self.sprite_type_dropdown.getValue() else sprite.shape[0] // 4
 
-                _, y = np.where(sprite[ :, :, 3] != 0)
-                min_col = int(np.min(y))
-                max_col = int(np.max(y))
-
-                est_shadow_width = max_col - min_col
-                est_shadow_width //= 4 if not self.sprite_type_dropdown.getValue() else 1
 
                 self.prev_info_text = f"Currently Open: {os.path.basename(img_path)}"
                 self.textbox.setText(self.prev_info_text)
                 self.error_displayed = False
                 self.open_sprite = sprite
-                self.shadow_slider.setValue(floor(est_shadow_width * 0.75))
+                self.shadow_slider.setValue(floor(self.estimate_shadow_width(sprite) * 0.75))
                 self.shadow_y_slider.setValue(floor(1.5 * SPRITE_VERT_GAP))
                 self.set_sprite_options_visibility(True)
                 self.update_image()
