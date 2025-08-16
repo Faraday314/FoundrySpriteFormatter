@@ -423,10 +423,10 @@ class SpriteFormatter(QWidget):
         return slider
 
     def create_options_bar(self) -> QLayout:
-        open_sprite_btn = QPushButton("Open Sprite")
+        open_sprite_btn = QPushButton("Open")
         open_sprite_btn.clicked.connect(self.open_sprite_file)
 
-        export_sprite_btn = QPushButton("Export Sprite")
+        export_sprite_btn = QPushButton("Export")
         export_sprite_btn.clicked.connect(self.save_sprite_file)
 
         file_layout = QHBoxLayout()
@@ -600,7 +600,6 @@ class SpriteFormatter(QWidget):
                 )
                 export_path = response
 
-
             if export_path != "":
                 try:
                     if self.open_sprite_list is None:
@@ -608,9 +607,12 @@ class SpriteFormatter(QWidget):
                     else:
                         for sprite_path in self.open_sprite_list:
                             sprite = cv2.imread(sprite_path, cv2.IMREAD_UNCHANGED)
+                            if self.auto_shadow_checkbox.isChecked():
+                                self.set_shadow_dims(sprite)
                             output_sprite = self.process_sprite(sprite)
                             filename = Path(sprite_path).stem
                             cv2.imwrite(f'{export_path}/{filename}_sprite.webp' , output_sprite, [int(cv2.IMWRITE_WEBP_QUALITY), 100])
+                        self.set_shadow_dims(self.open_sprite)
                 except cv2.error:
                     if not self.error_displayed:
                         self.prev_info_text = self.textbox.text()
