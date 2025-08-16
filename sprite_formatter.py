@@ -591,7 +591,7 @@ class SpriteFormatter(QWidget):
                 response = QFileDialog.getSaveFileName(
                     parent=self,
                     caption="Select where to export this sprite.",
-                    dir=f"{self.filename}_sprite.webp",
+                    dir=f"{self.filename}.webp",
                     filter="Image File (*.webp)",
                     selectedFilter="Image File (*.webp)"
                 )
@@ -614,7 +614,7 @@ class SpriteFormatter(QWidget):
                                 self.set_shadow_dims(sprite)
                             output_sprite = self.process_sprite(sprite)
                             filename = Path(sprite_path).stem
-                            cv2.imwrite(f'{export_path}/{filename}_sprite.webp' , output_sprite, [int(cv2.IMWRITE_WEBP_QUALITY), 100])
+                            cv2.imwrite(f'{export_path}/{filename}.webp' , output_sprite, [int(cv2.IMWRITE_WEBP_QUALITY), 100])
                         self.set_shadow_dims(self.open_sprite)
                 except cv2.error:
                     if not self.error_displayed:
