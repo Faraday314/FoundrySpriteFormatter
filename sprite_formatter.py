@@ -84,6 +84,7 @@ class SpriteFormatter(QWidget):
         self.shadow_y_slider = None
         self.pixel_art_shadow = None
         self.enable_shadow_checkbox = None
+        self.auto_shadow_checkbox = None
         self.textbox = None
 
         self.prev_info_text = ""
@@ -91,6 +92,7 @@ class SpriteFormatter(QWidget):
         self.background = self.create_background_grid()
         self.background_pixmap = convert_cv_qt(self.background)
         self.open_sprite = None
+        self.open_sprite_list = None
         self.output_sprite = None
         self.filename = None
 
@@ -113,131 +115,138 @@ class SpriteFormatter(QWidget):
         return scaled_bg
 
     def update_image(self):
-        if self.open_sprite is not None:
+        if self.open_sprite is not None and (
+                self.sprite_type_dropdown.getValue() or (
+                not self.sprite_type_dropdown.getValue() and is_valid_piskel_size(self.open_sprite.shape[1], self.open_sprite.shape[0])
+            )
+        ):
             try:
-
-                shadow_canvas = np.zeros((self.image_size_px, self.image_size_px, 4), dtype=np.uint8)
-                sprite_canvas = np.zeros((self.image_size_px, self.image_size_px, 4), dtype=np.uint8)
-
-                if self.enable_shadow_checkbox.isChecked():
-                    if self.pixel_art_shadow.isChecked():
-                        shadow_x = self.image_size_px // 2
-                        shadow_y = self.image_size_px - self.shadow_y_slider.getValue()
-                    else:
-                        # If we are drawing the non-pixelated shadow, we scale the values up to compensate
-                        # for the larger canvas size
-                        shadow_x = 2 * self.image_size_px
-                        shadow_y = 4 * self.image_size_px - self.shadow_y_slider.getValue()
-                        shadow_canvas = cv2.resize(
-                            src=shadow_canvas,
-                            dsize=None,
-                            fx=4.0, fy=4.0,
-                            interpolation=cv2.INTER_NEAREST_EXACT
-                        )
-                    shadow_height = self.shadow_slider.getValue() // 5
-
-                    # Draw drop shadow on blank canvas
-                    cv2.ellipse(
-                        img=shadow_canvas,
-                        center=(shadow_x, shadow_y),
-                        axes=(self.shadow_slider.getValue(), shadow_height),
-                        color=SHADOW_COLOR,
-                        thickness=-1,
-                        angle=0,
-                        startAngle=0,
-                        endAngle=360,
-                        lineType=cv2.LINE_AA if not self.pixel_art_shadow.isChecked() else cv2.LINE_8
-                    )
-
-                if (
-                    not self.sprite_type_dropdown.getValue()
-                    and (
-                        not self.enable_shadow_checkbox.isChecked()
-                        or self.pixel_art_shadow.isChecked()
-                    )
-                ):
-                    # Either we're in Piskel mode, and so are assuming the sprite is pre-scaled and so need to make the shadow match (if it doesn't already)
-                    # or we
-                    # This is also true if we have no shadow/the shadow is disabled.
-                    shadow_canvas = cv2.resize(
-                        src=shadow_canvas,
-                        dsize=None,
-                        fx=4.0, fy=4.0,
-                        interpolation=cv2.INTER_NEAREST_EXACT
-                    )
-
-
-                # OMM sprite mode
-                if self.sprite_type_dropdown.getValue():
-                    # Trim transparent parts of the sprite if present. This probably isn't strictly necessary.
-                    visible_rows, visible_cols = np.where(self.open_sprite[:,:,3] != 0)
-                    min_row = np.min(visible_rows)
-                    max_row = np.max(visible_rows)
-                    min_col = np.min(visible_cols)
-                    max_col = np.max(visible_cols)
-                    visible_sprite = self.open_sprite[min_row:max_row + 1, min_col:max_col + 1]
-
-                    content_limit_rows = min(visible_sprite.shape[0], self.image_size_px)
-                    content_limit_cols = min(visible_sprite.shape[1], self.image_size_px)
-
-                    row_offset = max(0, self.image_size_px - content_limit_rows - SPRITE_VERT_GAP)
-                    col_offset = max(0, (self.image_size_px - content_limit_cols) // 2)
-
-                    # Cuts the open sprite off at the borders of the canvas if it is too large
-                    safe_sprite = visible_sprite[:content_limit_rows, :content_limit_cols]
-
-                    sprite_canvas_section = sprite_canvas[
-                        row_offset:row_offset + content_limit_rows,
-                        col_offset:col_offset + content_limit_cols
-                    ]
-
-                    sprite_canvas_section[...] = safe_sprite[...]
-                # Piskel sprite mode
-                else:
-                    # Sprites are pre-scaled and aligned in Piskel mode.
-                    sprite_canvas = self.open_sprite
-
-                if self.enable_shadow_checkbox.isChecked() and not self.pixel_art_shadow.isChecked() and self.sprite_type_dropdown.getValue():
-                    # Shadow is scaled and sprite isn't, so we need to scale the sprite to match.
-                    sprite_canvas = cv2.resize(
-                        src=sprite_canvas,
-                        dsize=None,
-                        fx=4.0, fy=4.0,
-                        interpolation=cv2.INTER_NEAREST_EXACT
-                    )
-
-                # Place the sprite on the shadow.
-                self.output_sprite = alpha_overlay(sprite_canvas, shadow_canvas)
-                if self.pixel_art_shadow.isChecked() and self.sprite_type_dropdown.getValue():
-                    # Neither the sprite nor shadow was pre-scaled, so we need to do that now.
-                    self.output_sprite = cv2.resize(
-                        src=self.output_sprite,
-                        dsize=None,
-                        fx=4.0, fy=4.0,
-                        interpolation=cv2.INTER_NEAREST_EXACT
-                    )
-
+                self.output_sprite = self.process_sprite(self.open_sprite)
                 # Scale to canvas size for viewing
-                img_to_draw = cv2.resize(
+                output_scaled = cv2.resize(
                     src=self.output_sprite,
                     dsize=(self.default_viewport_size_px, self.default_viewport_size_px),
                     interpolation=cv2.INTER_NEAREST_EXACT
                 )
-                overlay = alpha_overlay(img_to_draw, self.background)
+                viewport_sprite = alpha_overlay(output_scaled, self.background)
 
-                viewport_pixmap = convert_cv_qt(overlay)
+                viewport_pixmap = convert_cv_qt(viewport_sprite)
                 self.image_label.setPixmap(viewport_pixmap)
             except cv2.error:
                 if not self.error_displayed:
                     self.prev_info_text = self.textbox.text()
-                self.textbox.setText("<font color='red'>An error occurred while drawing the image.</font>")
+                self.textbox.setText("<font color='red'>An error occurred while processing the image.</font>")
                 self.error_displayed = True
                 self.image_label.setPixmap(self.background_pixmap)
                 self.set_sprite_options_visibility(False)
                 self.open_sprite = None
                 self.output_sprite = None
-        else:
+        elif self.open_sprite is None:
             self.image_label.setPixmap(self.background_pixmap)
+
+
+    def process_sprite(self, sprite: np.ndarray):
+        shadow_canvas = np.zeros((self.image_size_px, self.image_size_px, 4), dtype=np.uint8)
+        sprite_canvas = np.zeros((self.image_size_px, self.image_size_px, 4), dtype=np.uint8)
+
+        if self.enable_shadow_checkbox.isChecked():
+            if self.pixel_art_shadow.isChecked():
+                shadow_x = self.image_size_px // 2
+                shadow_y = self.image_size_px - self.shadow_y_slider.getValue()
+            else:
+                # If we are drawing the non-pixelated shadow, we scale the values up to compensate
+                # for the larger canvas size
+                shadow_x = 2 * self.image_size_px
+                shadow_y = 4 * self.image_size_px - self.shadow_y_slider.getValue()
+                shadow_canvas = cv2.resize(
+                    src=shadow_canvas,
+                    dsize=None,
+                    fx=4.0, fy=4.0,
+                    interpolation=cv2.INTER_NEAREST_EXACT
+                )
+            shadow_height = self.shadow_slider.getValue() // 5
+
+            # Draw drop shadow on blank canvas
+            cv2.ellipse(
+                img=shadow_canvas,
+                center=(shadow_x, shadow_y),
+                axes=(self.shadow_slider.getValue(), shadow_height),
+                color=SHADOW_COLOR,
+                thickness=-1,
+                angle=0,
+                startAngle=0,
+                endAngle=360,
+                lineType=cv2.LINE_AA if not self.pixel_art_shadow.isChecked() else cv2.LINE_8
+            )
+
+        if (
+            not self.sprite_type_dropdown.getValue()
+            and (
+                not self.enable_shadow_checkbox.isChecked()
+                or self.pixel_art_shadow.isChecked()
+            )
+        ):
+            # Either we're in Piskel mode, and so are assuming the sprite is pre-scaled and so need to make the shadow match (if it doesn't already)
+            # or we
+            # This is also true if we have no shadow/the shadow is disabled.
+            shadow_canvas = cv2.resize(
+                src=shadow_canvas,
+                dsize=None,
+                fx=4.0, fy=4.0,
+                interpolation=cv2.INTER_NEAREST_EXACT
+            )
+
+        # OMM sprite mode
+        if self.sprite_type_dropdown.getValue():
+            # Trim transparent parts of the sprite if present. This probably isn't strictly necessary.
+            visible_rows, visible_cols = np.where(sprite[:, :, 3] != 0)
+            min_row = np.min(visible_rows)
+            max_row = np.max(visible_rows)
+            min_col = np.min(visible_cols)
+            max_col = np.max(visible_cols)
+            visible_sprite = sprite[min_row:max_row + 1, min_col:max_col + 1]
+
+            content_limit_rows = min(visible_sprite.shape[0], self.image_size_px)
+            content_limit_cols = min(visible_sprite.shape[1], self.image_size_px)
+
+            row_offset = max(0, self.image_size_px - content_limit_rows - SPRITE_VERT_GAP)
+            col_offset = max(0, (self.image_size_px - content_limit_cols) // 2)
+
+            # Cuts the open sprite off at the borders of the canvas if it is too large
+            safe_sprite = visible_sprite[:content_limit_rows, :content_limit_cols]
+
+            sprite_canvas_section = sprite_canvas[
+                row_offset:row_offset + content_limit_rows,
+                col_offset:col_offset + content_limit_cols
+            ]
+
+            sprite_canvas_section[...] = safe_sprite[...]
+        # Piskel sprite mode
+        else:
+            # Sprites are pre-scaled and aligned in Piskel mode.
+            sprite_canvas = sprite
+
+        if self.enable_shadow_checkbox.isChecked() and not self.pixel_art_shadow.isChecked() and self.sprite_type_dropdown.getValue():
+            # Shadow is scaled and sprite isn't, so we need to scale the sprite to match.
+            sprite_canvas = cv2.resize(
+                src=sprite_canvas,
+                dsize=None,
+                fx=4.0, fy=4.0,
+                interpolation=cv2.INTER_NEAREST_EXACT
+            )
+
+        # Place the sprite on the shadow.
+        output_sprite = alpha_overlay(sprite_canvas, shadow_canvas)
+        if self.pixel_art_shadow.isChecked() and self.sprite_type_dropdown.getValue():
+            # Neither the sprite nor shadow was pre-scaled, so we need to do that now.
+            output_sprite = cv2.resize(
+                src=output_sprite,
+                dsize=None,
+                fx=4.0, fy=4.0,
+                interpolation=cv2.INTER_NEAREST_EXACT
+            )
+
+        return output_sprite
 
     def update_size_dependent_widgets(self):
         if self.pixel_art_shadow.isChecked():
@@ -256,9 +265,6 @@ class SpriteFormatter(QWidget):
         self.update_image()
 
     def sprite_mode_change(self):
-        if self.open_sprite is not None:
-            self.shadow_slider.setValue(floor(self.estimate_shadow_width(self.open_sprite) * 0.75))
-
         # OMM mode
         if self.sprite_type_dropdown.getValue():
             self.textbox.setText(self.prev_info_text)
@@ -281,6 +287,8 @@ class SpriteFormatter(QWidget):
                     self.image_size_px = self.open_sprite.shape[0] // 4
                     self.update_size_dependent_widgets()
                     self.update_image()
+        if self.open_sprite is not None:
+            self.set_shadow_dims(self.open_sprite)
 
     def create_dropdown(self, label: str, options: dict[str, int], default_option_idx: int, on_change: Callable, row: int, layout: QGridLayout):
         dropdown_label = QLabel(label)
@@ -320,6 +328,11 @@ class SpriteFormatter(QWidget):
         self.update_image()
 
     def toggle_shadow_visibility_checkbox(self):
+        self.set_shadow_options_visibility(self.enable_shadow_checkbox.isChecked())
+        self.auto_shadow_checkbox.setVisible(self.open_sprite_list is not None and self.enable_shadow_checkbox.isChecked())
+        self.update_image()
+
+    def toggle_auto_shadow_checkbox(self):
         self.set_shadow_options_visibility(self.enable_shadow_checkbox.isChecked())
         self.update_image()
 
@@ -445,6 +458,11 @@ class SpriteFormatter(QWidget):
         checkbox_options.addWidget(pixel_art_shadow_checkbox)
         checkbox_options.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
+        automatic_shadow_checkbox = QCheckBox("Automatic Shadow")
+        automatic_shadow_checkbox.setChecked(True)
+        automatic_shadow_checkbox.setVisible(False)
+        automatic_shadow_checkbox.stateChanged.connect(self.toggle_auto_shadow_checkbox)
+
         textbox = QLabel()
 
         # Create a vertical box layout on the left for changing options.
@@ -452,6 +470,7 @@ class SpriteFormatter(QWidget):
         options_bar.addLayout(file_layout)
         options_bar.addLayout(dropdown_layout)
         options_bar.addLayout(checkbox_options)
+        options_bar.addWidget(automatic_shadow_checkbox)
         options_bar.addLayout(slider_options)
         options_bar.addStretch()
         options_bar.addWidget(textbox)
@@ -462,6 +481,7 @@ class SpriteFormatter(QWidget):
         self.shadow_y_slider = shadow_y_slider
         self.pixel_art_shadow = pixel_art_shadow_checkbox
         self.enable_shadow_checkbox = enable_shadow_checkbox
+        self.auto_shadow_checkbox = automatic_shadow_checkbox
         self.textbox = textbox
 
         self.set_sprite_options_visibility(False)
@@ -469,9 +489,11 @@ class SpriteFormatter(QWidget):
         return options_bar
 
     def set_shadow_options_visibility(self, visible: bool):
-        self.shadow_slider.setVisible(visible)
-        self.shadow_y_slider.setVisible(visible)
-        self.pixel_art_shadow.setVisible(visible)
+        visibility_allowed_filter = self.open_sprite_list is None or (self.open_sprite_list is not None and not self.auto_shadow_checkbox.isChecked())
+
+        self.shadow_slider.setVisible(visible and visibility_allowed_filter)
+        self.shadow_y_slider.setVisible(visible and visibility_allowed_filter)
+        self.pixel_art_shadow.setVisible(visible and visibility_allowed_filter)
 
     def set_sprite_options_visibility(self, visible: bool):
         if self.enable_shadow_checkbox.isChecked():
@@ -489,7 +511,7 @@ class SpriteFormatter(QWidget):
 
         return image_label
 
-    def estimate_shadow_width(self, sprite: np.ndarray) -> int:
+    def sprite_width(self, sprite: np.ndarray) -> int:
         _, y = np.where(sprite[:, :, 3] != 0)
         min_col = int(np.min(y))
         max_col = int(np.max(y))
@@ -499,17 +521,32 @@ class SpriteFormatter(QWidget):
 
         return est_shadow_width
 
+    def set_shadow_dims(self, sprite):
+        width = floor(self.sprite_width(sprite) * 0.75)
+        height = floor(1.5 * SPRITE_VERT_GAP)
+        self.shadow_slider.setValue(width)
+        self.shadow_y_slider.setValue(height)
+
+
     def open_sprite_file(self):
-        response = QFileDialog.getOpenFileName(
+        files = QFileDialog.getOpenFileNames(
             parent=self,
-            caption='Select a file',
+            caption='Select one or more sprites.',
             dir=os.getcwd(),
             filter='Image File (*.png *.webp)',
             selectedFilter='Image File (*.png *.webp)'
         )
-        img_path = response[0]
 
-        if img_path != '':
+        if len(files[0]) != 0:
+            img_path = files[0][0]
+            if len(files[0]) == 1:
+                self.open_sprite_list = None
+                self.auto_shadow_checkbox.setVisible(False)
+            else:
+                self.open_sprite_list = files[0]
+                self.auto_shadow_checkbox.setVisible(True)
+
+
             self.filename = Path(img_path).stem
             try:
                 sprite = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
@@ -525,14 +562,17 @@ class SpriteFormatter(QWidget):
                 or (is_valid_piskel_size(sprite.shape[0], sprite.shape[1]) and not self.sprite_type_dropdown.getValue())
             ):
                 self.image_size_px = self.canvas_size_dropdown.getValue() if self.sprite_type_dropdown.getValue() else sprite.shape[0] // 4
+                self.background = self.create_background_grid()
 
+                if self.open_sprite_list is None:
+                    self.prev_info_text = f"Currently Open: {os.path.basename(img_path)}"
+                else:
+                    self.prev_info_text = f"Currently Open ({len(self.open_sprite_list)} Total Files): {os.path.basename(img_path)}"
 
-                self.prev_info_text = f"Currently Open: {os.path.basename(img_path)}"
-                self.textbox.setText(self.prev_info_text)
                 self.error_displayed = False
                 self.open_sprite = sprite
-                self.shadow_slider.setValue(floor(self.estimate_shadow_width(sprite) * 0.75))
-                self.shadow_y_slider.setValue(floor(1.5 * SPRITE_VERT_GAP))
+                self.set_shadow_dims(sprite)
+                self.textbox.setText(self.prev_info_text)
                 self.set_sprite_options_visibility(True)
                 self.update_image()
             else:
@@ -543,18 +583,34 @@ class SpriteFormatter(QWidget):
 
     def save_sprite_file(self):
         if self.output_sprite is not None:
-            response = QFileDialog.getSaveFileName(
-                parent=self,
-                caption="Select where to export this sprite.",
-                dir=f"{self.filename}_sprite.webp",
-                filter="Image File (*.webp)",
-                selectedFilter="Image File (*.webp)"
-            )
 
-            export_path = response[0]
+            if self.open_sprite_list is None:
+                response = QFileDialog.getSaveFileName(
+                    parent=self,
+                    caption="Select where to export this sprite.",
+                    dir=f"{self.filename}_sprite.webp",
+                    filter="Image File (*.webp)",
+                    selectedFilter="Image File (*.webp)"
+                )
+                export_path = response[0]
+            else:
+                response = QFileDialog.getExistingDirectory(
+                    parent=self,
+                    caption="Select where to export these sprites"
+                )
+                export_path = response
+
+
             if export_path != "":
                 try:
-                    cv2.imwrite(export_path, self.output_sprite, [int(cv2.IMWRITE_WEBP_QUALITY), 100])
+                    if self.open_sprite_list is None:
+                        cv2.imwrite(export_path, self.output_sprite, [int(cv2.IMWRITE_WEBP_QUALITY), 100])
+                    else:
+                        for sprite_path in self.open_sprite_list:
+                            sprite = cv2.imread(sprite_path, cv2.IMREAD_UNCHANGED)
+                            output_sprite = self.process_sprite(sprite)
+                            filename = Path(sprite_path).stem
+                            cv2.imwrite(f'{export_path}/{filename}_sprite.webp' , output_sprite, [int(cv2.IMWRITE_WEBP_QUALITY), 100])
                 except cv2.error:
                     if not self.error_displayed:
                         self.prev_info_text = self.textbox.text()
