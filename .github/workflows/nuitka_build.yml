@@ -85,6 +85,7 @@ jobs:
         with:
           tag_name: latest_build
           prerelease: true
+          draft: false
           files: |
             macos_build.zip
             linux_build.zip
