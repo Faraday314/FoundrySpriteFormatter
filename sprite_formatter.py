@@ -68,6 +68,15 @@ def alpha_overlay(a: np.ndarray, b: np.ndarray):
     return overlay
 
 
+def get_visible_sprite(sprite):
+    visible_rows, visible_cols = np.where(sprite[:, :, 3] != 0)
+    min_row = np.min(visible_rows)
+    max_row = np.max(visible_rows)
+    min_col = np.min(visible_cols)
+    max_col = np.max(visible_cols)
+    return sprite[min_row:max_row + 1, min_col:max_col + 1]
+
+
 class SpriteFormatter(QWidget):
     def __init__(self):
         super().__init__()
@@ -144,7 +153,6 @@ class SpriteFormatter(QWidget):
         elif self.open_sprite is None:
             self.image_label.setPixmap(self.background_pixmap)
 
-
     def process_sprite(self, sprite: np.ndarray):
         shadow_canvas = np.zeros((self.image_size_px, self.image_size_px, 4), dtype=np.uint8)
         sprite_canvas = np.zeros((self.image_size_px, self.image_size_px, 4), dtype=np.uint8)
@@ -199,12 +207,7 @@ class SpriteFormatter(QWidget):
         # OMM sprite mode
         if self.sprite_type_dropdown.getValue():
             # Trim transparent parts of the sprite if present. This probably isn't strictly necessary.
-            visible_rows, visible_cols = np.where(sprite[:, :, 3] != 0)
-            min_row = np.min(visible_rows)
-            max_row = np.max(visible_rows)
-            min_col = np.min(visible_cols)
-            max_col = np.max(visible_cols)
-            visible_sprite = sprite[min_row:max_row + 1, min_col:max_col + 1]
+            visible_sprite = get_visible_sprite(sprite)
 
             content_limit_rows = min(visible_sprite.shape[0], self.image_size_px)
             content_limit_cols = min(visible_sprite.shape[1], self.image_size_px)
@@ -340,7 +343,6 @@ class SpriteFormatter(QWidget):
         label = QLabel(self)
         label.setText(slider_label)
 
-        #validator = QIntValidator(self)
         manual_entry = QSpinBox(self)
         manual_entry.setMaximumWidth(80)
         manual_entry.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -512,7 +514,8 @@ class SpriteFormatter(QWidget):
         return image_label
 
     def sprite_width(self, sprite: np.ndarray) -> int:
-        _, y = np.where(sprite[:, :, 3] != 0)
+        visible_sprite = get_visible_sprite(sprite)
+        _, y = np.where(visible_sprite[:, :, 3] != 0)
         min_col = int(np.min(y))
         max_col = int(np.max(y))
 
