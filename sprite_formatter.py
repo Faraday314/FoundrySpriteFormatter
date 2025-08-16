@@ -19,15 +19,15 @@ BACKGROUND_GRAY_COLOR = 224
 SHADOW_COLOR = (40,40,40,127)
 
 CANVAS_SIZES = {
-    "Tiny Legacy (35x35)": 35,
-    "Tiny (40x40)": 40,
-    "Oversize Tiny (60x60)": 60,
-    "Small/Medium Legacy (70x70)": 70,
-    "Small/Medium (80x80)": 80,
-    "Oversize Small/Medium (100x100)": 100,
-    "Legacy Large (140x140)": 140,
-    "Large (160x160)": 160,
-    "Oversize Large (200x200)": 200
+    "Eric Tiny (35x35)": 35,
+    "Hazel Tiny (40x40)": 40,
+    "Hazel Oversize Tiny (60x60)": 60,
+    "Eric Small/Medium (70x70)": 70,
+    "Hazel Small/Medium (80x80)": 80,
+    "Hazel Oversize Small/Medium (100x100)": 100,
+    "Eric Large (140x140)": 140,
+    "Hazel Large (160x160)": 160,
+    "Hazel Oversize Large (200x200)": 200
 }
 
 def convert_cv_qt(cv_img: np.ndarray) -> QPixmap:
