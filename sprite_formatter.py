@@ -19,15 +19,15 @@ BACKGROUND_GRAY_COLOR = 224
 SHADOW_COLOR = (40,40,40,127)
 
 CANVAS_SIZES = {
-    "Eric Tiny (35x35)": 35,
-    "Hazel Tiny (40x40)": 40,
-    "Hazel Oversize Tiny (60x60)": 60,
-    "Eric Small/Medium (70x70)": 70,
-    "Hazel Small/Medium (80x80)": 80,
-    "Hazel Oversize Small/Medium (100x100)": 100,
-    "Eric Large (140x140)": 140,
-    "Hazel Large (160x160)": 160,
-    "Hazel Oversize Large (200x200)": 200
+    'Eric Tiny (35x35)': 35,
+    'Hazel Tiny (40x40)': 40,
+    'Hazel Oversize Tiny (60x60)': 60,
+    'Eric Small/Medium (70x70)': 70,
+    'Hazel Small/Medium (80x80)': 80,
+    'Hazel Oversize Small/Medium (100x100)': 100,
+    'Eric Large (140x140)': 140,
+    'Hazel Large (160x160)': 160,
+    'Hazel Oversize Large (200x200)': 200
 }
 
 def convert_cv_qt(cv_img: np.ndarray) -> QPixmap:
@@ -78,11 +78,14 @@ def get_visible_sprite(sprite):
 
 
 class SpriteFormatter(QWidget):
+    last_import_path = None
+    last_export_path = None
+
     def __init__(self):
         super().__init__()
 
         self.setFixedSize(800, 340)
-        self.setWindowTitle("Foundry Pixel Art Formatter")
+        self.setWindowTitle('Foundry Pixel Art Formatter')
 
         # create the label that holds the image
         self.image_size_px = 80
@@ -96,7 +99,7 @@ class SpriteFormatter(QWidget):
         self.auto_shadow_checkbox = None
         self.textbox = None
 
-        self.prev_info_text = ""
+        self.prev_info_text = ''
         self.error_displayed = False
         self.background = self.create_background_grid()
         self.background_pixmap = convert_cv_qt(self.background)
@@ -144,7 +147,7 @@ class SpriteFormatter(QWidget):
             except cv2.error:
                 if not self.error_displayed:
                     self.prev_info_text = self.textbox.text()
-                self.textbox.setText("<font color='red'>An error occurred while processing the image.</font>")
+                self.textbox.setText('<font color=\'red\'>An error occurred while processing the image.</font>')
                 self.error_displayed = True
                 self.image_label.setPixmap(self.background_pixmap)
                 self.set_sprite_options_visibility(False)
@@ -194,8 +197,8 @@ class SpriteFormatter(QWidget):
                 or self.pixel_art_shadow.isChecked()
             )
         ):
-            # Either we're in Piskel mode, and so are assuming the sprite is pre-scaled and so need to make the shadow match (if it doesn't already)
-            # or we
+            # Either we're in Piskel mode, and so are assuming the sprite is pre-scaled
+            # and so need to make the shadow match (if it doesn't already)
             # This is also true if we have no shadow/the shadow is disabled.
             shadow_canvas = cv2.resize(
                 src=shadow_canvas,
@@ -283,7 +286,7 @@ class SpriteFormatter(QWidget):
                 if not is_valid_piskel_size(self.open_sprite.shape[0], self.open_sprite.shape[1]):
                     if not self.error_displayed:
                         self.prev_info_text = self.textbox.text()
-                    self.textbox.setText("<font color='red'>Incorrectly sized sprite for piskel mode.</font>")
+                    self.textbox.setText('<font color=\'red\'>Incorrectly sized sprite for piskel mode.</font>')
                     self.error_displayed = True
                     self.set_sprite_options_visibility(False)
                 else:
@@ -311,7 +314,7 @@ class SpriteFormatter(QWidget):
             dropdown_label.setVisible(visible)
             dropdown_entry.setVisible(visible)
 
-        dropdown = namedtuple('Dropdown', ["getValue", "set_visible"])
+        dropdown = namedtuple('Dropdown', ['getValue', 'set_visible'])
         dropdown.getValue = dropdown_entry.currentData
         dropdown.setVisible = set_visible
 
@@ -365,7 +368,7 @@ class SpriteFormatter(QWidget):
         manual_entry.editingFinished.connect(truncate_entry)
 
         def match_bar_to_text():
-            if manual_entry.text() != "" and manual_entry.text() != "-":
+            if manual_entry.text() != '' and manual_entry.text() != '-':
                 text_value = int(manual_entry.text())
                 if text_value < slider_entry.minimum():
                     slider_entry.setValue(slider_entry.minimum())
@@ -416,7 +419,7 @@ class SpriteFormatter(QWidget):
             slider_entry.setVisible(visible)
             max_label.setVisible(visible)
 
-        slider = namedtuple('Slider', ["get_value", "set_value", "set_range", "set_visible"])
+        slider = namedtuple('Slider', ['get_value', 'set_value', 'set_range', 'set_visible'])
         slider.getValue = get_value
         slider.setValue = set_value
         slider.setRange = set_range
@@ -425,10 +428,10 @@ class SpriteFormatter(QWidget):
         return slider
 
     def create_options_bar(self) -> QLayout:
-        open_sprite_btn = QPushButton("Open")
+        open_sprite_btn = QPushButton('Open')
         open_sprite_btn.clicked.connect(self.open_sprite_file)
 
-        export_sprite_btn = QPushButton("Export")
+        export_sprite_btn = QPushButton('Export')
         export_sprite_btn.clicked.connect(self.save_sprite_file)
 
         file_layout = QHBoxLayout()
@@ -436,22 +439,22 @@ class SpriteFormatter(QWidget):
         file_layout.addWidget(export_sprite_btn)
 
         dropdown_layout = QGridLayout()
-        sprite_type_dropdown = self.create_dropdown("Sprite Type:", {
-            "OMM Sprite": True,
-            "Piskel Sprite": False
+        sprite_type_dropdown = self.create_dropdown('Sprite Type:', {
+            'OMM Sprite': True,
+            'Piskel Sprite': False
         }, 0, self.sprite_mode_change, 0, dropdown_layout)
-        canvas_size_dropdown = self.create_dropdown("Canvas Size:", CANVAS_SIZES, 4, self.update_canvas_size, 1, dropdown_layout)
+        canvas_size_dropdown = self.create_dropdown('Canvas Size:', CANVAS_SIZES, 4, self.update_canvas_size, 1, dropdown_layout)
         dropdown_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         slider_options = QGridLayout()
-        shadow_slider = self.create_int_slider("Shadow Size (px):", 0, 0, self.image_size_px, slider_options, 0)
-        shadow_y_slider = self.create_int_slider("Shadow Height (px):", 0, 0, self.image_size_px, slider_options, 1)
+        shadow_slider = self.create_int_slider('Shadow Size (px):', 0, 0, self.image_size_px, slider_options, 0)
+        shadow_y_slider = self.create_int_slider('Shadow Height (px):', 0, 0, self.image_size_px, slider_options, 1)
 
-        pixel_art_shadow_checkbox = QCheckBox("Pixelate Shadow")
+        pixel_art_shadow_checkbox = QCheckBox('Pixelate Shadow')
         pixel_art_shadow_checkbox.setChecked(True)
         pixel_art_shadow_checkbox.stateChanged.connect(self.toggle_shadow_pixel_art_checkbox)
 
-        enable_shadow_checkbox = QCheckBox("Enable Shadow")
+        enable_shadow_checkbox = QCheckBox('Enable Shadow')
         enable_shadow_checkbox.setChecked(True)
         enable_shadow_checkbox.stateChanged.connect(self.toggle_shadow_visibility_checkbox)
 
@@ -460,7 +463,7 @@ class SpriteFormatter(QWidget):
         checkbox_options.addWidget(pixel_art_shadow_checkbox)
         checkbox_options.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        automatic_shadow_checkbox = QCheckBox("Automatic Shadow")
+        automatic_shadow_checkbox = QCheckBox('Automatic Shadow')
         automatic_shadow_checkbox.setChecked(True)
         automatic_shadow_checkbox.setVisible(False)
         automatic_shadow_checkbox.stateChanged.connect(self.toggle_auto_shadow_checkbox)
@@ -535,7 +538,7 @@ class SpriteFormatter(QWidget):
         files = QFileDialog.getOpenFileNames(
             parent=self,
             caption='Select one or more sprites.',
-            dir=os.getcwd(),
+            dir=os.getcwd() if self.last_import_path is None else self.last_import_path,
             filter='Image File (*.png *.webp)',
             selectedFilter='Image File (*.png *.webp)'
         )
@@ -549,14 +552,17 @@ class SpriteFormatter(QWidget):
                 self.open_sprite_list = files[0]
                 self.auto_shadow_checkbox.setVisible(True)
 
-
-            self.filename = Path(img_path).stem
+            path = Path(img_path)
+            self.filename = path.stem
+            self.last_import_path = str(path.parent)
             try:
                 sprite = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+                if sprite is None:
+                    raise cv2.error('Opened sprite was None.')
             except cv2.error:
                 if not self.error_displayed:
                     self.prev_info_text = self.textbox.text()
-                self.textbox.setText(f"<font color='red'>Could not open sprite at {img_path}.</font>")
+                self.textbox.setText(f'<font color=\'red\'>Could not open sprite at {img_path}.</font>')
                 self.error_displayed = True
                 return
 
@@ -568,9 +574,9 @@ class SpriteFormatter(QWidget):
                 self.background = self.create_background_grid()
 
                 if self.open_sprite_list is None:
-                    self.prev_info_text = f"Currently Open: {os.path.basename(img_path)}"
+                    self.prev_info_text = f'Currently Open: {os.path.basename(img_path)}'
                 else:
-                    self.prev_info_text = f"Currently Open ({len(self.open_sprite_list)} Total Files): {os.path.basename(img_path)}"
+                    self.prev_info_text = f'Currently Open ({len(self.open_sprite_list)} Total Files): {os.path.basename(img_path)}'
 
                 self.error_displayed = False
                 self.open_sprite = sprite
@@ -581,45 +587,52 @@ class SpriteFormatter(QWidget):
             else:
                 if not self.error_displayed:
                     self.prev_info_text = self.textbox.text()
-                self.textbox.setText("<font color='red'>Incorrectly sized sprite for piskel mode.</font>")
+                self.textbox.setText('<font color=\'red\'>Incorrectly sized sprite for piskel mode.</font>')
                 self.error_displayed = True
 
     def save_sprite_file(self):
         if self.output_sprite is not None:
+            path_prefix = (
+                self.last_export_path if self.last_export_path is not None
+                else self.last_import_path if self.last_import_path is not None else os.getcwd()
+            )
+            response = QFileDialog.getSaveFileName(
+                parent=self,
+                caption='Select where to export this sprite.',
+                dir=f'{path_prefix}/{self.filename}.webp',
+                filter='Image File (*.webp);;Image File (*.png)',
+                selectedFilter='Image File (*.webp)'
+            )
+            save_path = Path(response[0])
+            self.last_export_path = str(save_path.parent)
+            export_path = response[0] if self.open_sprite_list is None else self.last_export_path
+            extension = save_path.suffix
 
-            if self.open_sprite_list is None:
-                response = QFileDialog.getSaveFileName(
-                    parent=self,
-                    caption="Select where to export this sprite.",
-                    dir=f"{self.filename}.webp",
-                    filter="Image File (*.webp)",
-                    selectedFilter="Image File (*.webp)"
-                )
-                export_path = response[0]
-            else:
-                response = QFileDialog.getExistingDirectory(
-                    parent=self,
-                    caption="Select where to export these sprites"
-                )
-                export_path = response
-
-            if export_path != "":
+            if export_path != '':
                 try:
                     if self.open_sprite_list is None:
-                        cv2.imwrite(export_path, self.output_sprite, [int(cv2.IMWRITE_WEBP_QUALITY), 100])
+                        cv2.imwrite(
+                            export_path, self.output_sprite,
+                            [int(cv2.IMWRITE_WEBP_QUALITY), 100] if extension == '.webp' else []
+                        )
                     else:
                         for sprite_path in self.open_sprite_list:
                             sprite = cv2.imread(sprite_path, cv2.IMREAD_UNCHANGED)
+                            if sprite is None:
+                                continue
                             if self.auto_shadow_checkbox.isChecked():
                                 self.set_shadow_dims(sprite)
                             output_sprite = self.process_sprite(sprite)
                             filename = Path(sprite_path).stem
-                            cv2.imwrite(f'{export_path}/{filename}.webp' , output_sprite, [int(cv2.IMWRITE_WEBP_QUALITY), 100])
+                            cv2.imwrite(
+                                f'{export_path}/{filename}{extension}', output_sprite,
+                                [int(cv2.IMWRITE_WEBP_QUALITY), 100] if extension == '.webp' else []
+                            )
                         self.set_shadow_dims(self.open_sprite)
                 except cv2.error:
                     if not self.error_displayed:
                         self.prev_info_text = self.textbox.text()
-                    self.textbox.setText(f"<font color='red'>Could not save sprite at provided path.</font>")
+                    self.textbox.setText(f'<font color=\'red\'>Could not save sprite at provided path.</font>')
                     self.error_displayed = True
 
 if __name__ == '__main__':
